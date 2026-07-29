@@ -1,92 +1,82 @@
-from collections import defaultdict
 import regex as re
-from pretokenization_example import multiprocess_tokenize
+from collections import defaultdict
 
-def merge(
-        vocab_size: int,
-        words_freq: dict,
-        vocab: dict,
-        merges: list
-):
+
+def pre_tokenizer(text: str, special_tokens: list[str]):
     '''
-    merge the most freq bytes
-    returns:
-        vocab: dict[int, bytes]
-        merge: list[tuple[bytes, bytes]]
+    pre tokenization
+    return:
+         list[tuple(bytes) | str]
     '''
-    while len(vocab) < vocab_size:
-        # pair freq
-        pair_freq = defaultdict(int)
-        for word, freq in words_freq.items():
-            for i in range(len(word) - 1):
-                pair = (word[i], word[i + 1])
-                pair_freq[pair] += freq
+    if special_tokens:
+        PAT = "(" + "|".join(sorted(
+            [re.escape(token) for token in special_tokens],
+            key=len,
+            reverse=True
+        )
+        ) + ")"
 
-        if not pair_freq:
-            break
+        chunks = re.split(PAT, text)
+    else:
+        chunks = [text]
 
-        # max pair freq
-        max_freq_pair = max(pair_freq, key=lambda x:(pair_freq[x], x))
-        vocab[len(vocab)] = max_freq_pair[0] + max_freq_pair[1]
-        merges.append(max_freq_pair)
-        # merge
-        tmp_freq  = defaultdict(int)
-        for word, freq in words_freq.items():
-            new_words = []
-            i = 0
-            while i < len(word):
-                if i < len(word) - 1 and (word[i], word[i + 1]) == max_freq_pair:
-                    new_words.append(word[i] + word[i + 1])
-                    i += 2
-                else:
-                    new_words.append(word[i])
-                    i += 1
-            tmp_freq[tuple(new_words)] += freq
-
-        words_freq = tmp_freq
-    return vocab, merges
-
-def train_bpe(
-        input_path: str,
-        vocab_size: int,
-        special_tokens: list[str],
-):
-    '''
-    train a byte-level BPE tokeni zer
-    returns:
-        vocab: dict[int, bytes]
-        merge: list[tuple[bytes, bytes]]
-    '''
-    # Initialize
-    vocab = {i: bytes([i]) for i in range(256)}
-    merges = []
-
-    # Add special_token
-    for token in special_tokens:
-        vocab[len(vocab)] = token.encode("utf-8")
-
-    # Pre_tokenization
-    words_freq = multiprocess_tokenize(input_path, 8, special_tokens)
-
-    # Merge
-    return merge(vocab_size, words_freq, vocab, merges)
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    words = []
+    for chunk in chunks:
+        if chunk in special_token:
+            words.append(chunk)
+            continue
+        for word in re.findall(PAT, chunk):
+            words.append(tuple(bytes([b]) for b in word.encode("utf-8")))
+    return words
 
 
-if __name__ == "__main__":
-    import time
+class Tokenizer:
+    def __init__(self,
+                 vocab: dict[int, bytes],
+                 merges: list[tuple],
+                 special_token: list[str],
+    ):
+        # 建立双向表
+        self.id_to_token = vocab
+        self.token_to_id = {value: key for key, value in vocab.items()}
+
+        self.merges = merges
+        self.special_token = special_token
+
+    def encode(self, text: str) -> list[int]:
+        words = pre_tokenizer(text, self.special_token)
+        res = []
+        for word in words:
+            if isinstance(word, str):
+                res.append(self.token_to_id[word.encode("utf-8")])
+                continue
+            for merge in self.merges:
+                i = 0
+                new_word = []
+                while i < len(word):
+                    if i < len(word) - 1 and (word[i], word[i + 1]) == merge:
+                        new_word.append(word[i] + word[i + 1])
+                        i += 2
+                    else:
+                        new_word.append(word[i])
+                        i += 1
+                word = new_word
+            for token in word:
+                res.append(self.token_to_id[token])
+        return res
+
+    def decode(self, ids: list[int]) -> str:
+        return b"".join(
+             self.id_to_token[id] for id in ids
+        ).decode("utf-8", errors="replace")
 
 
-    start = time.time()
+vocab = {0: b' ', 1: b'a', 2:b'c', 3: b'e', 4: b'h', 5: b't', 6: b'th', 7: b' c', 8: b' a', 9: b'the', 10: b' at', 11: b'<|endoftext|>', 12:b'<|endoftext|><|endoftext|>'}
+merges = [(b't', b'h'), (b' ', b'c'), (b' ', b'a'), (b'th', b'e'), (b' a',b't')]
+special_token = ["<|endoftext|>","<|endoftext|><|endoftext|>"]
+tokenizer = Tokenizer(vocab, merges, special_token)
+enco = tokenizer.encode("the cat<|endoftext|><|endoftext|> ate<|endoftext|>")
+print(enco)
 
-    vocab, merges = train_bpe(
-        "data/tinystories.txt",
-        500,
-        ["<|endoftext|>"]
-    )
-
-    end = time.time()
-
-    print("pre_tokenization time:", end-start)
-
-
-
+print(tokenizer.decode(enco))

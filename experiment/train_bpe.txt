@@ -1,0 +1,35 @@
+Baseline:
+
+Dataset:
+TinyStoriesV2-GPT4-train.txt
+
+vocab_size:
+500
+
+time:
+459.56s
+
+breakdown:
+pre_tokenization: 425.05s
+merge: ~34.5s
+
+memory:
+~10.6GB
+
+Observation:
+Pre-tokenization dominates runtime.
+
+Optimize 1:
+8_process pretokenizer
+
+pre_tokenization time:
+76.6s
+
+Optimizer 2：
+merge
+
+before optimize time:
+99s
+
+after optimizer time:
+88s
