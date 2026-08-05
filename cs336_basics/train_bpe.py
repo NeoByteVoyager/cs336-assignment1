@@ -22,23 +22,38 @@ def merge(
         vocab: dict[int, bytes]
         merge: list[tuple[bytes, bytes]]
     '''
-    while len(vocab) < vocab_size:
-        # pair freq
-        pair_freq = defaultdict(int)
-        for word, freq in words_freq.items():
-            for i in range(len(word) - 1):
-                pair = (word[i], word[i + 1])
-                pair_freq[pair] += freq
+    pair_freq = defaultdict(int)
+    for word, freq in words_freq.items():
+        for i in range(len(word) - 1):
+            pair = (word[i], word[i + 1])
+            pair_freq[pair] += freq
 
-        if not pair_freq:
-            break
+    heap = []
+    for pair, freq in pair_freq.items():
+            heapq.heappush(heap, (-freq, Pair(pair)))
+
+    while len(vocab) < vocab_size:
 
         # max pair freq
-        max_freq_pair = max(pair_freq, key=lambda x:(pair_freq[x], x))
+        max_freq_pair = None
+        while heap:
+            neg_freq, pair_obj = heapq.heappop(heap)
+            freq = - neg_freq
+            pair = pair_obj.pair
+
+            if freq == pair_freq[pair]:
+                max_freq_pair = pair
+                break
+
+        if not max_freq_pair:
+            break
+
         vocab[len(vocab)] = max_freq_pair[0] + max_freq_pair[1]
         merges.append(max_freq_pair)
+
         # merge
         tmp_freq  = defaultdict(int)
+        affected_pairs = set()
         for word, freq in words_freq.items():
             new_words = []
             i = 0
@@ -49,9 +64,24 @@ def merge(
                 else:
                     new_words.append(word[i])
                     i += 1
-            tmp_freq[tuple(new_words)] += freq
 
+            new_words = tuple(new_words)
+            tmp_freq[new_words] += freq
+            if word != new_words:
+                for i in range(len(word) - 1):
+                    pair = (word[i], word[i + 1])
+                    pair_freq[pair] -= freq
+                    affected_pairs.add(pair)
+                for i in range(len(new_words) - 1):
+                    pair = (new_words[i], new_words[i + 1])
+                    pair_freq[pair] += freq
+                    affected_pairs.add(pair)
         words_freq = tmp_freq
+
+        for pair in affected_pairs:
+            if pair_freq[pair]:
+                heapq.heappush(heap, (-pair_freq[pair], Pair(pair)))
+
     return vocab, merges
 
 def train_bpe(
