@@ -92,7 +92,7 @@ def main():
     train_dataset = np.load("data/train_dataset.npy", mmap_mode='r')
     train_data_config = {
         "dataset": train_dataset,
-        "batch_size": 128,
+        "batch_size": 64,
         "context_length": 256,
         "device": device
     }
@@ -100,7 +100,7 @@ def main():
     valid_data = np.load("data/val_dataset.npy", mmap_mode='r')
     valid_data_config = {
         "dataset": valid_data,
-        "batch_size": 128,
+        "batch_size": 64,
         "context_length": 256,
         "device": device
     }
