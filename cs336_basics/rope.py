@@ -13,8 +13,8 @@ class Rope(nn.Module):
         pos = torch.arange(0, seq_len, 1, device=device).float() # float
         freqs = torch.outer(pos, inv_freq)
 
-        self.sin = torch.sin(freqs) # register
-        self.cos = torch.cos(freqs)
+        self.register_buffer("cos", torch.cos(freqs))
+        self.register_buffer("sin",  torch.sin(freqs))
 
     def forward(self, x, token_positions):
         x1 = x[..., ::2]
