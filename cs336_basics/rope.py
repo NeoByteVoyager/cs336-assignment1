@@ -5,12 +5,11 @@ class Rope(nn.Module):
     def __init__(self,
                  theta: float,
                  d_k: int,
-                 seq_len: int,
-                 device:torch.device | None = None):
+                 seq_len: int):
         super().__init__()
 
-        inv_freq = theta ** (- torch.arange(0, d_k, 2, device=device).float() / d_k) # bug
-        pos = torch.arange(0, seq_len, 1, device=device).float() # float
+        inv_freq = theta ** (- torch.arange(0, d_k, 2).float() / d_k) # bug
+        pos = torch.arange(0, seq_len, 1).float() # float
         freqs = torch.outer(pos, inv_freq)
 
         self.register_buffer("cos", torch.cos(freqs))
