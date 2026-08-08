@@ -65,6 +65,8 @@ def valid(model, valid_data_config):
     model.train()
 
 def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
     # model
     model_config = {
         "vocab_size": 10000,
@@ -75,7 +77,7 @@ def main():
         "d_ff": 1024,
         "rope_theta": 10000
     }
-    model = Model(**model_config)
+    model = Model(**model_config).to(device)
     # optimizer
     optimizer_config = {
         "params": model.parameters(),
@@ -91,7 +93,7 @@ def main():
         "dataset": train_dataset,
         "batch_size": 32,
         "context_length": 100,
-        "device": "cpu"
+        "device": device
     }
     # valid_data
     valid_data = np.load("data/val_dataset.npy", mmap_mode='r')
@@ -99,7 +101,7 @@ def main():
         "dataset": valid_data,
         "batch_size": 32,
         "context_length": 100,
-        "device": "cpu"
+        "device": device
     }
 
     train_config = {
@@ -107,7 +109,8 @@ def main():
         "save_interval": 100,
         "checkpoint_path": "ckpt.pt"
     }
-
+    for name, param in model.named_parameters():
+        print(name, param.device)
     # loop
     for it in range(train_config["iteration"]):
         train(model, optimizer,  train_config, train_data_config, it)
