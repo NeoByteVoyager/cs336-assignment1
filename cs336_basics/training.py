@@ -70,11 +70,11 @@ def main():
     # model
     model_config = {
         "vocab_size": 10000,
-        "context_length": 100,
-        "d_model": 256,
+        "context_length": 256,
+        "d_model": 512,
         "num_layers": 4,
-        "num_heads": 8,
-        "d_ff": 1024,
+        "num_heads": 16,
+        "d_ff": 1344,
         "rope_theta": 10000
     }
     model = Model(**model_config).to(device)
@@ -92,23 +92,23 @@ def main():
     train_dataset = np.load("data/train_dataset.npy", mmap_mode='r')
     train_data_config = {
         "dataset": train_dataset,
-        "batch_size": 32,
-        "context_length": 100,
+        "batch_size": 128,
+        "context_length": 256,
         "device": device
     }
     # valid_data
     valid_data = np.load("data/val_dataset.npy", mmap_mode='r')
     valid_data_config = {
         "dataset": valid_data,
-        "batch_size": 32,
-        "context_length": 100,
+        "batch_size": 128,
+        "context_length": 256,
         "device": device
     }
 
     train_config = {
-        "iteration": 1000,
+        "iteration": 10000,
         "save_interval": 100,
-        "checkpoint_path": "ckpt.pt"
+        "checkpoint_path": "/content/drive/MyDrive/cs336_checkpoints/ckpt.pt"
     }
     for name, param in model.named_parameters():
         print(name, param.device)
