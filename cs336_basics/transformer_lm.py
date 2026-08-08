@@ -5,6 +5,7 @@ from cs336_basics.embedding import Embedding
 from cs336_basics.linear import Linear
 from cs336_basics.RMSNorm import RMSNorm
 
+
 class Model(nn.Module):
     def __init__(
             self,
@@ -40,5 +41,5 @@ if __name__ == "__main__":
     model = Model(100, 10, 8, 3, 2, 64, 10000)
     print(model(x).shape)
 
-    for name, param in model.named_parameters():
-        print(name, param.shape)
+    for p in model.parameters():
+        print(p.shape)
