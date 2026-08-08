@@ -78,7 +78,7 @@ def main():
         "rope_theta": 10000
     }
     model = Model(**model_config).to(device)
-    
+
     # optimizer
     optimizer_config = {
         "params": model.parameters(),

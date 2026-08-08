@@ -170,8 +170,6 @@ class multihead_self_attention_with_rope(multihead_self_attention):
         super().__init__(d_model, num_heads)
         # rope
         self.rope = Rope(theta, d_model // num_heads, max_seq_len)
-        # mask
-        self.mask = torch.tril(torch.ones(max_seq_len, max_seq_len)).bool()
 
     def forward(self, x, token_positions: torch.Tensor = None):
         seq = x.shape[1]
@@ -190,7 +188,7 @@ class multihead_self_attention_with_rope(multihead_self_attention):
         K = self.rope(K, token_positions)
 
         # self_attention
-        mask = self.mask[:seq, :seq]
+        mask = torch.tril(torch.ones(seq, seq, device=x.device)).bool()
         attention_out = scaled_dot_product_attention(Q, K, V, mask)
 
         out = rearrange(attention_out, "batch num_heads seq dim -> batch seq (num_heads dim)")
