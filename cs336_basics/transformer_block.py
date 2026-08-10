@@ -149,15 +149,15 @@ class multihead_self_attention(nn.Module):
         K = self.k_proj(x)
         V = self.v_proj(x)
         # batch num_head seq dim
-        Q = rearrange(Q, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
-        K = rearrange(K, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
-        V = rearrange(V, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
+        Q = rearrange(Q, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
+        K = rearrange(K, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
+        V = rearrange(V, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
 
         # self_attention
         mask = torch.tril(torch.ones(seq, seq, device=x.device)).bool()
         attention_out = scaled_dot_product_attention(Q, K, V, mask)
 
-        out = rearrange(attention_out, "batch num_heads seq dim -> batch seq (num_heads dim)")
+        out = rearrange(attention_out, "... num_heads seq dim -> ... seq (num_heads dim)")
         return self.proj(out)
 
 class multihead_self_attention_with_rope(multihead_self_attention):
@@ -178,9 +178,9 @@ class multihead_self_attention_with_rope(multihead_self_attention):
         K = self.k_proj(x)
         V = self.v_proj(x)
         # batch num_head seq dim
-        Q = rearrange(Q, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
-        K = rearrange(K, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
-        V = rearrange(V, "batch seq (num_heads dim) -> batch num_heads seq dim", num_heads=self.num_heads)
+        Q = rearrange(Q, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
+        K = rearrange(K, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
+        V = rearrange(V, "... seq (num_heads dim) -> ... num_heads seq dim", num_heads=self.num_heads)
         if token_positions is None:
             token_positions = torch.arange(0, seq, device=x.device)
 
@@ -191,7 +191,7 @@ class multihead_self_attention_with_rope(multihead_self_attention):
         mask = torch.tril(torch.ones(seq, seq, device=x.device)).bool()
         attention_out = scaled_dot_product_attention(Q, K, V, mask)
 
-        out = rearrange(attention_out, "batch num_heads seq dim -> batch seq (num_heads dim)")
+        out = rearrange(attention_out, "... num_heads seq dim -> ... seq (num_heads dim)")
         return self.proj(out)
 
 

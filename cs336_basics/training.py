@@ -1,3 +1,6 @@
+import json
+import sys
+
 import torch
 import numpy as np
 
@@ -9,20 +12,20 @@ from cs336_basics.lr_cosine_schedule import lrCosineSchedule
 
 from cs336_basics.data_loading import get_batch
 from cs336_basics.checkpoint import load_checkpoint,save_checkpoint
-
+from cs336_basics.logger import Logger
 
 def train(model,
+          config,
           optimizer,
-          train_config,
           train_data_config,
           it: int):
     model.train()
-
+    train_config = config["train"]
     lr = lrCosineSchedule(
         it,
-        1e-3,
-        1e-5,
-        100,
+        config["optimizer"]["lr"],
+        config["scheduler"]["min_lr"],
+        config["scheduler"]["warmup_steps"],
         train_config["iteration"]
     )
 
@@ -37,22 +40,17 @@ def train(model,
     loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
     loss.backward()
 
-    gradientClipping(model.parameters(), 1.0)
+    gradientClipping(model.parameters(), train_config["gradient_clip"])
 
     optimizer.step()
 
-    if (it + 1) % 10 == 0:
-        print(it, loss.item())
-
-    if (it + 1) % train_config["save_interval"] == 0:
-        save_checkpoint(model, optimizer, it, train_config["checkpoint_path"])
-
+    return loss.item(), lr
 
 def valid(model, valid_data_config):
     model.eval()
 
     total_loss = 0.0
-    eval_steps = 5
+    eval_steps = 10
     with torch.no_grad():
         for _ in range(eval_steps):
             inputs, targets = get_batch(**valid_data_config)
@@ -61,63 +59,68 @@ def valid(model, valid_data_config):
 
             loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
             total_loss += loss.item()
-    print(f"valid_loss: {total_loss / eval_steps}")
     model.train()
+    return total_loss / eval_steps
 
 def main():
+    config_path = sys.argv[1]
+    with open(config_path) as f:
+        config = json.load(f)
+
+    # model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
-    # model
-    model_config = {
-        "vocab_size": 10000,
-        "context_length": 256,
-        "d_model": 512,
-        "num_layers": 4,
-        "num_heads": 16,
-        "d_ff": 1344,
-        "rope_theta": 10000
-    }
-    model = Model(**model_config).to(device)
+    model = Model(**config["model"]).to(device)
 
     # optimizer
     optimizer_config = {
         "params": model.parameters(),
-        "lr": 1e-3,
-        "weight_decay": 1e-5,
-        "betas": (0.9, 0.99),
-        "eps": 1e-8
+        "lr": config["optimizer"]["lr"],
+        "weight_decay": config["optimizer"]["weight_decay"],
+        "betas": tuple(config["optimizer"]["betas"]),
+        "eps": config["optimizer"]["eps"]
     }
     optimizer = AdamW(**optimizer_config)
+
     # train_data
     train_dataset = np.load("data/train_dataset.npy", mmap_mode='r')
     train_data_config = {
         "dataset": train_dataset,
-        "batch_size": 64,
-        "context_length": 256,
+        "batch_size": config["train"]["batch_size"],
+        "context_length": config["train"]["context_length"],
         "device": device
     }
     # valid_data
     valid_data = np.load("data/val_dataset.npy", mmap_mode='r')
     valid_data_config = {
         "dataset": valid_data,
-        "batch_size": 64,
-        "context_length": 256,
+        "batch_size": config["train"]["batch_size"],
+        "context_length": config["train"]["context_length"],
         "device": device
     }
 
-    train_config = {
-        "iteration": 10000,
-        "save_interval": 100,
-        "checkpoint_path": "/content/drive/MyDrive/cs336_checkpoints/ckpt.pt"
-    }
+    train_config = config["train"]
     for name, param in model.named_parameters():
         print(name, param.device)
+
+
+    logger = Logger(config)
     # loop
     for it in range(train_config["iteration"]):
-        train(model, optimizer,  train_config, train_data_config, it)
-
+        loss, lr = train(model, config, optimizer,  train_data_config, it)
+        logger.log_train(it + 1, loss, lr)
+        if(it + 1) % 20 == 0:
+            print(f"it:{it + 1}, train loss:{loss:.4f}")
         if (it + 1) % 100 == 0:
-            valid(model, valid_data_config)
+            loss = valid(model, valid_data_config)
+            print(f"it:{it + 1}, valid loss:{loss:.4f}")
+            logger.log_valid(it + 1, loss)
+        if (it + 1) % train_config["save_interval"] == 0:
+            save_checkpoint(model, optimizer, it + 1, train_config["checkpoint_path"])
+
+    logger.save(
+        config["train"]["log_path"]
+    )
 
 if __name__ == "__main__":
     main()
