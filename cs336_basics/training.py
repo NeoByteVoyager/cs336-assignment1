@@ -41,6 +41,7 @@ def train(model,
     with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
         outputs = model(inputs)
         loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
+        print(outputs.dtype)
 
     loss.backward()
 

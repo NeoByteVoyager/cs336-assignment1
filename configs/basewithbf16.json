@@ -25,7 +25,7 @@
     },
 
     "train": {
-        "iteration": 500,
+        "iteration": 200,
         "batch_size": 128,
         "save_interval": 100,
         "context_length": 256,
