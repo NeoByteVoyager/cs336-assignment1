@@ -17,7 +17,7 @@ model_config = {
 }
 model = Model(**model_config)
 device = "cuda" if torch.cuda.is_available() else "cpu"
-checkpoint = torch.load("ckpt.pt", map_location=torch.device(device))
+checkpoint = torch.load("baseline.pt", map_location=torch.device(device))
 # load model and set eval mode
 model.load_state_dict(checkpoint["model_state_dict"])
 model.to(device)

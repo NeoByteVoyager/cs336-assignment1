@@ -1,8 +1,10 @@
 import json
 import sys
+from typing import cast
 
 import torch
 import numpy as np
+from torch.cpu import device_count
 
 from cs336_basics.transformer_lm import Model
 from cs336_basics.crossentropy import crossEntropy
@@ -18,7 +20,8 @@ def train(model,
           config,
           optimizer,
           train_data_config,
-          it: int):
+          it: int,
+          device):
     model.train()
     train_config = config["train"]
     lr = lrCosineSchedule(
@@ -35,9 +38,10 @@ def train(model,
     optimizer.zero_grad()
 
     inputs, targets = get_batch(**train_data_config)
-    outputs = model(inputs)
+    with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+        outputs = model(inputs)
+        loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
 
-    loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
     loss.backward()
 
     gradientClipping(model.parameters(), train_config["gradient_clip"])
@@ -46,7 +50,7 @@ def train(model,
 
     return loss.item(), lr
 
-def valid(model, valid_data_config):
+def valid(model, valid_data_config, device):
     model.eval()
 
     total_loss = 0.0
@@ -55,9 +59,9 @@ def valid(model, valid_data_config):
         for _ in range(eval_steps):
             inputs, targets = get_batch(**valid_data_config)
 
-            outputs = model(inputs)
-
-            loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
+            with torch.autocast(device_type=device.type, dtype=torch.bfloat16):
+                outputs = model(inputs)
+                loss = crossEntropy(outputs.view(-1, outputs.shape[-1]), targets.view(-1))
             total_loss += loss.item()
     model.train()
     return total_loss / eval_steps
@@ -107,12 +111,12 @@ def main():
     logger = Logger(config)
     # loop
     for it in range(train_config["iteration"]):
-        loss, lr = train(model, config, optimizer,  train_data_config, it)
+        loss, lr = train(model, config, optimizer,  train_data_config, it, device)
         logger.log_train(it + 1, loss, lr)
         if(it + 1) % 20 == 0:
             print(f"it:{it + 1}, train loss:{loss:.4f}")
         if (it + 1) % 100 == 0:
-            loss = valid(model, valid_data_config)
+            loss = valid(model, valid_data_config, device)
             print(f"it:{it + 1}, valid loss:{loss:.4f}")
             logger.log_valid(it + 1, loss)
         if (it + 1) % train_config["save_interval"] == 0:
