@@ -4,7 +4,6 @@ from typing import cast
 
 import torch
 import numpy as np
-from torch.cpu import device_count
 
 from cs336_basics.transformer_lm import Model
 from cs336_basics.crossentropy import crossEntropy

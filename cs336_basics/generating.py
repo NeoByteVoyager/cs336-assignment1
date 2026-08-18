@@ -17,7 +17,7 @@ model_config = {
 }
 model = Model(**model_config)
 device = "cuda" if torch.cuda.is_available() else "cpu"
-checkpoint = torch.load("baseline.pt", map_location=torch.device(device))
+checkpoint = torch.load("checkpoints/batch64_lr0_002.pt", map_location=torch.device(device))
 # load model and set eval mode
 model.load_state_dict(checkpoint["model_state_dict"])
 model.to(device)
@@ -45,7 +45,7 @@ input_ids = tokenizer.encode(inputs)
 
 i = 0
 max_len = 240
-t = 0.4
+t = 0.3
 p = 0.8
 end_id = tokenizer.encode("<|endoftext|>")[-1]
 

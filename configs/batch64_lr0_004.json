@@ -10,7 +10,7 @@
     },
 
     "optimizer": {
-        "lr": 0.001,
+        "lr": 0.004,
         "weight_decay": 0.00001,
         "betas": [
             0.9,
@@ -25,8 +25,8 @@
     },
 
     "train": {
-        "iteration": 2000,
-        "batch_size": 128,
+        "iteration": 4000,
+        "batch_size": 64,
         "save_interval": 100,
         "context_length": 256,
 
